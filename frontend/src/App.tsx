@@ -26,11 +26,11 @@ const glassStyle = {
   boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
   backdropFilter: 'blur(4px)',
   WebkitBackdropFilter: 'blur(4px)',
-  borderRadius: '10px',
+  borderRadius: '16px',
   border: '1px solid rgba(255, 255, 255, 0.18)',
-  padding: '2rem',
+  padding: '1.5rem',
   textAlign: 'center' as const,
-  marginTop: '2rem',
+  marginTop: '1rem',
 };
 
 function App() {
@@ -53,6 +53,7 @@ function App() {
 
   const playSound = (type: 'OK' | 'SAI') => {
     const audio = new Audio(type === 'OK' ? '/ok.mp3' : '/sai.mp3');
+    audio.load(); // Ensure it's loaded
     audio.play().catch(e => console.error("Error playing sound:", e));
   };
 
@@ -103,10 +104,10 @@ function App() {
   };
 
   return (
-    <Container maxWidth="sm" sx={{ pb: 4 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
+    <Container maxWidth="sm" sx={{ pb: 2, pt: 2 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#333' }}>
-           QR Matcher 🔍
+           PUNCH QR CODE SCANNER 🔍
         </Typography>
         <IconButton onClick={() => setShowHistory(true)} sx={{ color: '#333' }}>
           <HistoryIcon />
@@ -118,9 +119,6 @@ function App() {
           <QrCodeScanner sx={{ fontSize: 80, color: '#333', mb: 2 }} />
           <Typography variant="h4" gutterBottom sx={{ fontWeight: 'bold' }}>
             Ready to Scan?
-          </Typography>
-          <Typography variant="body1" sx={{ mb: 4 }}>
-            Please turn up your volume for audio feedback. 🔊
           </Typography>
           <Button 
             variant="contained" 
