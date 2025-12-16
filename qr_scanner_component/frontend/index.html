@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <style>
+    body { margin: 0; padding: 0; }
+    #reader { width: 100%; border-radius: 8px; overflow: hidden; }
+  </style>
+</head>
+<body>
+  <div id="reader"></div>
+  <script>
+    // --- Streamlit Boilerplate ---
+    function sendMessageToStreamlitClient(type, data) {
+      var outData = Object.assign({
+        isStreamlitMessage: true,
+        type: type,
+      }, data);
+      parent.postMessage(outData, "*");
+    }
+
+    function setComponentValue(value) {
+      sendMessageToStreamlitClient("streamlit:setComponentValue", {value: value});
+    }
+
+    function onReady() {
+      sendMessageToStreamlitClient("streamlit:componentReady", {apiVersion: 1});
+    }
+
+    function setFrameHeight(height) {
+      sendMessageToStreamlitClient("streamlit:setFrameHeight", {height: height});
+    }
+
+    // --- QR Scanner Logic ---
+    const html5QrCode = new Html5Qrcode("reader");
+    let isScanning = true;
+
+    const config = { 
+      fps: 10, 
+      qrbox: { width: 250, height: 250 },
+      aspectRatio: 1.0 
+    };
+
+    // Start scanning
+    html5QrCode.start(
+      { facingMode: "environment" }, 
+      config, 
+      (decodedText, decodedResult) => {
+        // Success Callback
+        if (isScanning) {
+          isScanning = false;
+          // Stop scanning and send value
+          html5QrCode.stop().then(() => {
+            setComponentValue(decodedText);
+          }).catch((err) => {
+             console.error("Failed to stop", err);
+             setComponentValue(decodedText);
+          });
+        }
+      },
+      (errorMessage) => {
+        // Error Callback (called on every frame frame where qr not found)
+        // Do nothing
+      }
+    ).catch(err => {
+      console.error("Error starting scanner", err);
+    });
+
+    // Initialize
+    window.addEventListener("load", function() {
+      onReady();
+      setFrameHeight(400); // Set a fixed height for the scanner window
+    });
+  </script>
+</body>
+</html>

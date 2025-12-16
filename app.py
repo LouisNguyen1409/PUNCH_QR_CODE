@@ -1,63 +1,33 @@
 import streamlit as st
-from streamlit_webrtc import webrtc_streamer, VideoProcessorBase, WebRtcMode
-import cv2
-import av
-import time
 import base64
+from qr_scanner_component import qr_scanner
 
 # Page Config
 st.set_page_config(page_title="QR Code Matcher", page_icon="🔍")
 
-# CSS for large text and centering
+# CSS
 st.markdown("""
     <style>
-    .big-font {
-        font-size:30px !important;
-        font-weight: bold;
-        text-align: center;
-    }
-    .success-text {
-        color: green;
-        font-size: 50px;
-        font-weight: bold;
-        text-align: center;
-    }
-    .error-text {
-        color: red;
-        font-size: 50px;
-        font-weight: bold;
-        text-align: center;
-    }
+    .big-font { font-size:30px !important; font-weight: bold; text-align: center; }
+    .success-text { color: green; font-size: 50px; font-weight: bold; text-align: center; }
+    .error-text { color: red; font-size: 50px; font-weight: bold; text-align: center; }
     </style>
     """, unsafe_allow_html=True)
 
 # Helper: Play Audio
 def autoplay_audio(file_path: str):
-    with open(file_path, "rb") as f:
-        data = f.read()
-        b64 = base64.b64encode(data).decode()
-        md = f"""
-            <audio autoplay>
-            <source src="data:audio/mp3;base64,{b64}" type="audio/mp3">
-            </audio>
-            """
-        st.markdown(md, unsafe_allow_html=True)
-
-# WebRTC Configuration (Fix for "Connection taking too long")
-RTC_CONFIGURATION = {
-    "iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]
-}
-
-# Video Constraints (Back camera, lower resolution for speed)
-VIDEO_CONSTRAINTS = {
-    "video": {
-        "facingMode": "environment",  # Use back camera
-        "width": {"ideal": 480},      # Lower resolution for better performance
-        "height": {"ideal": 640},
-        "frameRate": {"max": 15},     # Limit frame rate
-    },
-    "audio": False
-}
+    try:
+        with open(file_path, "rb") as f:
+            data = f.read()
+            b64 = base64.b64encode(data).decode()
+            md = f"""
+                <audio autoplay>
+                <source src="data:audio/mp3;base64,{b64}" type="audio/mp3">
+                </audio>
+                """
+            st.markdown(md, unsafe_allow_html=True)
+    except FileNotFoundError:
+        st.warning(f"Audio file not found: {file_path}")
 
 # State Management
 if 'step' not in st.session_state:
@@ -66,29 +36,6 @@ if 'scan_result_1' not in st.session_state:
     st.session_state.scan_result_1 = None
 if 'scan_result_2' not in st.session_state:
     st.session_state.scan_result_2 = None
-
-# QR Code Processor
-class QRCodeVideoProcessor(VideoProcessorBase):
-    def __init__(self):
-        self.qr_code = None
-        self.detector = cv2.QRCodeDetector()
-
-    def recv(self, frame):
-        img = frame.to_ndarray(format="bgr24")
-        
-        # Detect and decode
-        data, bbox, _ = self.detector.detectAndDecode(img)
-        
-        if data:
-            self.qr_code = data
-            # Draw a box around the QR code for visual feedback
-            if bbox is not None:
-                for i in range(len(bbox)):
-                    pt1 = tuple(map(int, bbox[i][0]))
-                    pt2 = tuple(map(int, bbox[(i+1) % len(bbox)][0]))
-                    cv2.line(img, pt1, pt2, (0, 255, 0), 3)
-
-        return av.VideoFrame.from_ndarray(img, format="bgr24")
 
 def reset_app():
     st.session_state.step = 0
@@ -110,27 +57,14 @@ elif st.session_state.step == 1:
     st.title("Step 1: Scan Sheet QR")
     st.info("Point camera at the QR code on the SHEET.")
 
-    ctx = webrtc_streamer(
-        key="scanner_1", 
-        mode=WebRtcMode.SENDRECV,
-        rtc_configuration=RTC_CONFIGURATION,
-        video_processor_factory=QRCodeVideoProcessor,
-        media_stream_constraints=VIDEO_CONSTRAINTS,
-        async_processing=True
-    )
-
-    if ctx.video_processor:
-        # Polling loop to check for result
-        placeholder = st.empty()
-        while True:
-            if ctx.video_processor.qr_code:
-                st.session_state.scan_result_1 = ctx.video_processor.qr_code
-                st.success(f"Captured: {st.session_state.scan_result_1}")
-                time.sleep(0.5) # Brief pause to show success
-                st.session_state.step = 2
-                st.rerun()
-                break
-            time.sleep(0.1)
+    # Call the custom component
+    code = qr_scanner(key="scanner_1")
+    
+    if code:
+        st.session_state.scan_result_1 = code
+        st.success(f"Captured: {code}")
+        st.session_state.step = 2
+        st.rerun()
 
 # --- STEP 2: Scan Tool Box ---
 elif st.session_state.step == 2:
@@ -138,26 +72,13 @@ elif st.session_state.step == 2:
     st.info("Point camera at the QR code on the TOOL BOX.")
     st.write(f"**Sheet QR:** {st.session_state.scan_result_1}")
 
-    ctx = webrtc_streamer(
-        key="scanner_2", 
-        mode=WebRtcMode.SENDRECV,
-        rtc_configuration=RTC_CONFIGURATION,
-        video_processor_factory=QRCodeVideoProcessor,
-        media_stream_constraints=VIDEO_CONSTRAINTS,
-        async_processing=True
-    )
+    code = qr_scanner(key="scanner_2")
 
-    if ctx.video_processor:
-        placeholder = st.empty()
-        while True:
-            if ctx.video_processor.qr_code:
-                st.session_state.scan_result_2 = ctx.video_processor.qr_code
-                st.success(f"Captured: {st.session_state.scan_result_2}")
-                time.sleep(0.5)
-                st.session_state.step = 3
-                st.rerun()
-                break
-            time.sleep(0.1)
+    if code:
+        st.session_state.scan_result_2 = code
+        st.success(f"Captured: {code}")
+        st.session_state.step = 3
+        st.rerun()
 
 # --- STEP 3: Result ---
 elif st.session_state.step == 3:
