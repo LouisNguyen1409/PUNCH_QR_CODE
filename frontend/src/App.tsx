@@ -62,9 +62,22 @@ function App() {
   };
 
   const handleStart = () => {
-    // Unlock audio context by playing and immediately pausing
-    okAudio.play().then(() => { okAudio.pause(); okAudio.currentTime = 0; }).catch(() => {});
-    saiAudio.play().then(() => { saiAudio.pause(); saiAudio.currentTime = 0; }).catch(() => {});
+    // Unlock audio context silently
+    okAudio.volume = 0;
+    saiAudio.volume = 0;
+    
+    okAudio.play().then(() => { 
+        okAudio.pause(); 
+        okAudio.currentTime = 0; 
+        okAudio.volume = 1; 
+    }).catch(() => {});
+    
+    saiAudio.play().then(() => { 
+        saiAudio.pause(); 
+        saiAudio.currentTime = 0; 
+        saiAudio.volume = 1; 
+    }).catch(() => {});
+    
     setStep(1);
   };
 
