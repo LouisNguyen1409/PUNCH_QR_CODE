@@ -9,11 +9,14 @@ interface QRScannerProps {
 
 export const QRScanner = ({ onScan, title }: QRScannerProps) => {
   useEffect(() => {
+    const isMobile = window.innerWidth < 600;
+    const boxSize = isMobile ? 200 : 250;
+
     const scanner = new Html5QrcodeScanner(
       "reader",
       { 
         fps: 10, 
-        qrbox: { width: 250, height: 250 },
+        qrbox: { width: boxSize, height: boxSize },
         aspectRatio: 1.0,
         supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA],
         videoConstraints: {
@@ -46,17 +49,18 @@ export const QRScanner = ({ onScan, title }: QRScannerProps) => {
     <Paper 
       elevation={3} 
       sx={{ 
-        p: 2, 
+        p: 1, 
         background: 'rgba(255, 255, 255, 0.1)', 
         backdropFilter: 'blur(10px)',
         border: '1px solid rgba(255, 255, 255, 0.2)',
         borderRadius: '16px',
         maxWidth: '500px',
         width: '100%',
-        margin: '0 auto'
+        margin: '0 auto',
+        overflow: 'hidden'
       }}
     >
-        <Typography variant="h6" align="center" sx={{ mb: 2, color: '#333' }}>
+        <Typography variant="h6" align="center" sx={{ mb: 1, color: '#333' }}>
             {title}
         </Typography>
         <div id="reader"></div>

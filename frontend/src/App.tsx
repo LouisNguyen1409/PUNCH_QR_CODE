@@ -33,6 +33,10 @@ const glassStyle = {
   marginTop: '1rem',
 };
 
+// Audio objects (Singleton pattern)
+const okAudio = new Audio('/ok.mp3');
+const saiAudio = new Audio('/sai.mp3');
+
 function App() {
   const [step, setStep] = useState<number>(0);
   const [qr1, setQr1] = useState<string>('');
@@ -52,13 +56,15 @@ function App() {
   };
 
   const playSound = (type: 'OK' | 'SAI') => {
-    const audio = new Audio(type === 'OK' ? '/ok.mp3' : '/sai.mp3');
-    audio.load(); // Ensure it's loaded
+    const audio = type === 'OK' ? okAudio : saiAudio;
+    audio.currentTime = 0;
     audio.play().catch(e => console.error("Error playing sound:", e));
   };
 
   const handleStart = () => {
-    // Unlock audio context if needed by playing a short silence or just state change
+    // Unlock audio context by playing and immediately pausing
+    okAudio.play().then(() => { okAudio.pause(); okAudio.currentTime = 0; }).catch(() => {});
+    saiAudio.play().then(() => { saiAudio.pause(); saiAudio.currentTime = 0; }).catch(() => {});
     setStep(1);
   };
 
@@ -104,9 +110,9 @@ function App() {
   };
 
   return (
-    <Container maxWidth="sm" sx={{ pb: 2, pt: 2 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#333' }}>
+    <Container maxWidth="sm" sx={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
+      <Box sx={{ py: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#333' }}>
            PUNCH QR CODE SCANNER 🔍
         </Typography>
         <IconButton onClick={() => setShowHistory(true)} sx={{ color: '#333' }}>
@@ -114,76 +120,107 @@ function App() {
         </IconButton>
       </Box>
 
-      {step === 0 && (
-        <Paper sx={glassStyle}>
-          <QrCodeScanner sx={{ fontSize: 80, color: '#333', mb: 2 }} />
-          <Typography variant="h4" gutterBottom sx={{ fontWeight: 'bold' }}>
-            Ready to Scan?
-          </Typography>
-          <Button 
-            variant="contained" 
-            size="large" 
-            onClick={handleStart}
-            sx={{ 
-              borderRadius: 20, 
-              background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
-              boxShadow: '0 3px 5px 2px rgba(33, 203, 243, .3)'
-            }}
-          >
-            Start Scanning
-          </Button>
-        </Paper>
-      )}
+      <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', pb: 8 }}>
+        {step === 0 && (
+          <Paper sx={glassStyle}>
+            <QrCodeScanner sx={{ fontSize: 80, color: '#333', mb: 2 }} />
+            <Typography variant="h4" gutterBottom sx={{ fontWeight: 'bold' }}>
+              Ready to Scan?
+            </Typography>
+            <Button 
+              variant="contained" 
+              size="large" 
+              onClick={handleStart}
+              fullWidth
+              sx={{ 
+                mt: 4,
+                borderRadius: 20, 
+                background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
+                boxShadow: '0 3px 5px 2px rgba(33, 203, 243, .3)',
+                height: 56,
+                fontWeight: 'bold',
+                fontSize: '1.2rem'
+              }}
+            >
+              Start Scanning
+            </Button>
+          </Paper>
+        )}
 
-      {step === 1 && (
-        <Box sx={{ mt: 4 }}>
-          <QRScanner onScan={handleScan1} title="Step 1: Scan SHEET QR" />
-          <Button onClick={() => setStep(0)} sx={{ mt: 2 }}>Cancel</Button>
-        </Box>
-      )}
-
-      {step === 2 && (
-        <Box sx={{ mt: 4 }}>
-          <Typography variant="body2" sx={{ mb: 2, textAlign: 'center', background: '#fff', p: 1, borderRadius: 1 }}>
-            Match against: <strong>{qr1}</strong>
-          </Typography>
-          <QRScanner onScan={handleScan2} title="Step 2: Scan TOOL BOX QR" />
-          <Button onClick={() => setStep(0)} sx={{ mt: 2 }}>Cancel</Button>
-        </Box>
-      )}
-
-      {step === 3 && (
-        <Paper sx={glassStyle}>
-          {qr1 === qr2 ? (
-            <CheckCircle sx={{ fontSize: 100, color: 'green', mb: 2 }} />
-          ) : (
-            <Cancel sx={{ fontSize: 100, color: 'red', mb: 2 }} />
-          )}
-          
-          <Typography variant="h3" sx={{ 
-            fontWeight: 'bold', 
-            color: qr1 === qr2 ? 'green' : 'red',
-            mb: 2 
-          }}>
-            {qr1 === qr2 ? 'OK' : 'SAI'}
-          </Typography>
-
-          <Box sx={{ textAlign: 'left', mb: 3, background: 'rgba(255,255,255,0.5)', p: 2, borderRadius: 2 }}>
-            <Typography><strong>Sheet:</strong> {qr1}</Typography>
-            <Typography><strong>Tool:</strong> {qr2}</Typography>
+        {step === 1 && (
+          <Box>
+            <QRScanner onScan={handleScan1} title="Step 1: Scan SHEET QR" />
+            <Button 
+              variant="outlined" 
+              color="error" 
+              fullWidth 
+              size="large"
+              onClick={() => setStep(0)} 
+              sx={{ mt: 3, borderRadius: 20, height: 48, fontWeight: 'bold' }}
+            >
+              Cancel
+            </Button>
           </Box>
+        )}
 
-          <Button 
-            variant="contained" 
-            size="large" 
-            onClick={handleReset}
-            fullWidth
-            sx={{ mb: 2 }}
-          >
-            Scan Next Pair
-          </Button>
-        </Paper>
-      )}
+        {step === 2 && (
+          <Box>
+            <Typography variant="body2" sx={{ mb: 2, textAlign: 'center', background: '#fff', p: 1, borderRadius: 1 }}>
+              Match against: <strong>{qr1}</strong>
+            </Typography>
+            <QRScanner onScan={handleScan2} title="Step 2: Scan TOOL BOX QR" />
+            <Button 
+              variant="outlined" 
+              color="error" 
+              fullWidth 
+              size="large"
+              onClick={() => setStep(0)} 
+              sx={{ mt: 3, borderRadius: 20, height: 48, fontWeight: 'bold' }}
+            >
+              Cancel
+            </Button>
+          </Box>
+        )}
+
+        {step === 3 && (
+          <Paper sx={glassStyle}>
+            {qr1 === qr2 ? (
+              <CheckCircle sx={{ fontSize: 100, color: 'green', mb: 2 }} />
+            ) : (
+              <Cancel sx={{ fontSize: 100, color: 'red', mb: 2 }} />
+            )}
+            
+            <Typography variant="h3" sx={{ 
+              fontWeight: 'bold', 
+              color: qr1 === qr2 ? 'green' : 'red',
+              mb: 2 
+            }}>
+              {qr1 === qr2 ? 'OK' : 'SAI'}
+            </Typography>
+
+            <Box sx={{ textAlign: 'left', mb: 3, background: 'rgba(255,255,255,0.5)', p: 2, borderRadius: 2 }}>
+              <Typography><strong>Sheet:</strong> {qr1}</Typography>
+              <Typography><strong>Tool:</strong> {qr2}</Typography>
+            </Box>
+
+            <Button 
+              variant="contained" 
+              size="large" 
+              onClick={handleReset}
+              fullWidth
+              sx={{ 
+                borderRadius: 20, 
+                height: 56, 
+                fontWeight: 'bold',
+                fontSize: '1.1rem',
+                background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)'
+              }}
+            >
+              Scan Next Pair
+            </Button>
+          </Paper>
+        )}
+      </Box>
 
       {/* History Dialog */}
       <Dialog 
