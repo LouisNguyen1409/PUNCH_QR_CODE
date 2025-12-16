@@ -4,40 +4,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
   <style>
-    body { margin: 0; padding: 0; font-family: sans-serif; }
-    #reader { width: 100%; border-radius: 8px; overflow: hidden; position: relative; }
-    
-    /* Overlay Button for Sound */
-    #sound-overlay {
-        position: absolute;
-        top: 0; left: 0; right: 0; bottom: 0;
-        background: rgba(0,0,0,0.5);
-        z-index: 1000;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        cursor: pointer;
-    }
-    #sound-btn {
-        background: #ff4b4b;
-        color: white;
-        border: none;
-        padding: 15px 30px;
-        font-size: 20px;
-        border-radius: 50px;
-        font-weight: bold;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-    }
+    body { margin: 0; padding: 0; }
+    #reader { width: 100%; border-radius: 8px; overflow: hidden; }
   </style>
 </head>
 <body>
   <div id="reader"></div>
-  
-  <!-- Sound Unlock Overlay -->
-  <div id="sound-overlay" onclick="unlockAudio()">
-      <button id="sound-btn">🔊 Tap to Enable Sound</button>
-  </div>
-
   <script>
     // --- Audio Data (Filled by Python) ---
     
@@ -69,37 +41,6 @@
       sendMessageToStreamlitClient("streamlit:setFrameHeight", {height: height});
     }
 
-    // --- Audio Unlock Logic ---
-    function unlockAudio() {
-        if (window.audioOK && window.audioSAI) {
-            // Play momentary silence to unlock
-            window.audioOK.volume = 0;
-            window.audioSAI.volume = 0;
-            
-            var p1 = window.audioOK.play();
-            var p2 = window.audioSAI.play();
-            
-            Promise.all([p1, p2]).then(() => {
-                // Reset volume and pause
-                window.audioOK.pause();
-                window.audioSAI.pause();
-                window.audioOK.currentTime = 0;
-                window.audioSAI.currentTime = 0;
-                window.audioOK.volume = 1.0;
-                window.audioSAI.volume = 1.0;
-                
-                // Hide overlay
-                document.getElementById('sound-overlay').style.display = 'none';
-            }).catch((e) => {
-                console.error("Unlock failed", e);
-                // Hide anyway so they can scan
-                document.getElementById('sound-overlay').style.display = 'none';
-            });
-        } else {
-            document.getElementById('sound-overlay').style.display = 'none';
-        }
-    }
-
     // --- QR Scanner Logic ---
     const html5QrCode = new Html5Qrcode("reader");
     let isScanning = false;
@@ -123,11 +64,12 @@
               isScanning = false;
               
               // CLIENT-SIDE AUDIO LOGIC
+              // Only play if we have a comparison (Step 2)
               if (expectedMatch) {
                  if (decodedText.trim() === expectedMatch.trim()) {
-                     if (window.audioOK) window.audioOK.play();
+                     if (window.audioOK) window.audioOK.play().catch(e => console.log(e));
                  } else {
-                     if (window.audioSAI) window.audioSAI.play();
+                     if (window.audioSAI) window.audioSAI.play().catch(e => console.log(e));
                  }
               }
 
@@ -151,11 +93,6 @@
         
         const args = event.data.args;
         expectedMatch = args.expected_match || null;
-        
-        // If we already unlocked audio (e.g. from previous step), hide overlay
-        // We can't easily know global state, but if it's step 2, we might not need to unlock again
-        // providing the iframe didn't reload. Streamlit reloads iframes often.
-        // So safe default is to show it. 
         
         startScanner();
         setFrameHeight(400);
