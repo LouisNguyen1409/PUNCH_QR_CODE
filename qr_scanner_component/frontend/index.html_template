@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <style>
+    body { margin: 0; padding: 0; }
+    #reader { width: 100%; border-radius: 8px; overflow: hidden; }
+  </style>
+</head>
+<body>
+  <div id="reader"></div>
+  <script>
+    // --- Audio Data (Filled by Python script previously, or placeholders if not) ---
+    // Note: Since I am overwriting the file, I need to make sure the Base64 data is preserved.
+    // The previous Python command already wrote the Base64 data into the file, but now I am overwriting it with this template.
+    // I MUST RE-INJECT THE AUDIO DATA.
+    
+    // Placeholder - will be replaced by the Python script again below
+    // const audioOK = ... 
+    // const audioSAI = ...
+
+    // --- Streamlit Boilerplate ---
+    function sendMessageToStreamlitClient(type, data) {
+      var outData = Object.assign({
+        isStreamlitMessage: true,
+        type: type,
+      }, data);
+      parent.postMessage(outData, "*");
+    }
+
+    function setComponentValue(value) {
+      sendMessageToStreamlitClient("streamlit:setComponentValue", {value: value});
+    }
+
+    function onReady() {
+      sendMessageToStreamlitClient("streamlit:componentReady", {apiVersion: 1});
+    }
+
+    function setFrameHeight(height) {
+      sendMessageToStreamlitClient("streamlit:setFrameHeight", {height: height});
+    }
+
+    // --- QR Scanner Logic ---
+    const html5QrCode = new Html5Qrcode("reader");
+    let isScanning = false; // Start false, wait for render event
+    let expectedMatch = null;
+
+    const config = { 
+      fps: 10, 
+      qrbox: { width: 250, height: 250 },
+      aspectRatio: 1.0 
+    };
+
+    function startScanner() {
+        if (isScanning) return;
+        isScanning = true;
+        
+        html5QrCode.start(
+          { facingMode: "environment" }, 
+          config, 
+          (decodedText, decodedResult) => {
+            // Success Callback
+            if (isScanning) {
+              isScanning = false;
+              
+              // CLIENT-SIDE AUDIO LOGIC
+              if (expectedMatch) {
+                 // We have an expected value (Step 2)
+                 if (decodedText.trim() === expectedMatch.trim()) {
+                     if (window.audioOK) window.audioOK.play();
+                 } else {
+                     if (window.audioSAI) window.audioSAI.play();
+                 }
+              } else {
+                 // First scan (Step 1)
+                 // Optional: Beep
+              }
+    
+              // Stop scanning and send value
+              html5QrCode.stop().then(() => {
+                setComponentValue(decodedText);
+              }).catch((err) => {
+                 console.error("Failed to stop", err);
+                 setComponentValue(decodedText);
+              });
+            }
+          },
+          (errorMessage) => {
+            // Error Callback
+          }
+        ).catch(err => {
+          console.error("Error starting scanner", err);
+        });
+    }
+
+    // --- Handle Streamlit Events ---
+    function onDataUpdate(event) {
+        if (event.data.type !== "streamlit:render") return;
+        
+        const args = event.data.args; // Arguments passed from Python
+        if (args.expected_match) {
+            expectedMatch = args.expected_match;
+        } else {
+            expectedMatch = null;
+        }
+        
+        // Start scanner only after we receive the config
+        startScanner();
+        setFrameHeight(400);
+    }
+
+    window.addEventListener("message", onDataUpdate);
+    window.addEventListener("load", function() {
+      onReady();
+    });
+
+  </script>
+</body>
+</html>

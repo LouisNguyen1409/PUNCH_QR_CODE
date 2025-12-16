@@ -15,19 +15,30 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# Helper: Play Audio
+# Helper: Play Audio (Aggressive JavaScript Method)
 def autoplay_audio(file_path: str):
     try:
         with open(file_path, "rb") as f:
             data = f.read()
             b64 = base64.b64encode(data).decode()
-            # unique ID to force re-render
+            
+            # HTML + JS to force play
+            unique_id = f"audio_{int(time.time() * 1000)}"
             md = f"""
-                <audio autoplay="true" id="audio_{time.time()}">
-                <source src="data:audio/mp3;base64,{b64}" type="audio/mp3">
+                <audio id="{unique_id}" style="display:none">
+                    <source src="data:audio/mp3;base64,{b64}" type="audio/mp3">
                 </audio>
-                """
+                <script>
+                    var audio = document.getElementById("{unique_id}");
+                    if (audio) {{
+                        audio.play().catch(function(error) {{
+                            console.log("Audio play failed: " + error);
+                        }});
+                    }}
+                </script>
+            """
             st.markdown(md, unsafe_allow_html=True)
+            
     except FileNotFoundError:
         st.warning(f"Audio file not found: {file_path}")
 
@@ -76,7 +87,8 @@ elif st.session_state.step == 2:
     st.info("Point camera at the QR code on the TOOL BOX.")
     st.write(f"**Sheet QR:** {st.session_state.scan_result_1}")
 
-    code = qr_scanner(key="scanner_2")
+    # Pass the first result to the scanner so it can play the sound immediately on match
+    code = qr_scanner(expected_match=str(st.session_state.scan_result_1).strip(), key="scanner_2")
 
     if code:
         st.session_state.scan_result_2 = code
