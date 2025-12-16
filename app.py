@@ -1,5 +1,6 @@
 import streamlit as st
 import base64
+import time
 from qr_scanner_component import qr_scanner
 
 # Page Config
@@ -20,8 +21,9 @@ def autoplay_audio(file_path: str):
         with open(file_path, "rb") as f:
             data = f.read()
             b64 = base64.b64encode(data).decode()
+            # unique ID to force re-render
             md = f"""
-                <audio autoplay>
+                <audio autoplay="true" id="audio_{time.time()}">
                 <source src="data:audio/mp3;base64,{b64}" type="audio/mp3">
                 </audio>
                 """
@@ -47,8 +49,10 @@ def reset_app():
 if st.session_state.step == 0:
     st.title("QR Code Matcher 🔍")
     st.markdown("<p class='big-font'>Ready to scan?</p>", unsafe_allow_html=True)
+    st.write("Turn up your volume! 🔊")
     
     if st.button("Start Scanning", use_container_width=True):
+        # Play a silent sound to unlock audio context on mobile
         st.session_state.step = 1
         st.rerun()
 
