@@ -43,6 +43,22 @@ def autoplay_audio(file_path: str):
             """
         st.markdown(md, unsafe_allow_html=True)
 
+# WebRTC Configuration (Fix for "Connection taking too long")
+RTC_CONFIGURATION = {
+    "iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]
+}
+
+# Video Constraints (Back camera, lower resolution for speed)
+VIDEO_CONSTRAINTS = {
+    "video": {
+        "facingMode": "environment",  # Use back camera
+        "width": {"ideal": 480},      # Lower resolution for better performance
+        "height": {"ideal": 640},
+        "frameRate": {"max": 15},     # Limit frame rate
+    },
+    "audio": False
+}
+
 # State Management
 if 'step' not in st.session_state:
     st.session_state.step = 0
@@ -97,8 +113,9 @@ elif st.session_state.step == 1:
     ctx = webrtc_streamer(
         key="scanner_1", 
         mode=WebRtcMode.SENDRECV,
+        rtc_configuration=RTC_CONFIGURATION,
         video_processor_factory=QRCodeVideoProcessor,
-        media_stream_constraints={"video": True, "audio": False},
+        media_stream_constraints=VIDEO_CONSTRAINTS,
         async_processing=True
     )
 
@@ -124,8 +141,9 @@ elif st.session_state.step == 2:
     ctx = webrtc_streamer(
         key="scanner_2", 
         mode=WebRtcMode.SENDRECV,
+        rtc_configuration=RTC_CONFIGURATION,
         video_processor_factory=QRCodeVideoProcessor,
-        media_stream_constraints={"video": True, "audio": False},
+        media_stream_constraints=VIDEO_CONSTRAINTS,
         async_processing=True
     )
 
